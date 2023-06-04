@@ -2,7 +2,7 @@ import os
 import uvicorn
 import datetime
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -88,20 +88,28 @@ def create_pereval(db, pereval_data):
 
 @app.post("/submitData")
 def submit_data(data: dict):
-    db = SessionLocal()
     try:
-        pereval_data = data.get('pereval')
-        pereval = create_pereval(db, pereval_data)
+        db = SessionLocal()
+        try:
+            pereval_data = data.get('pereval')
+            pereval = create_pereval(db, pereval_data)
+            response_data = {
+                "status": 200,
+                "message": None,
+                "id": pereval.id
+            }
+
+            return JSONResponse(content=jsonable_encoder(response_data))
+
+        finally:
+            db.close()
+    except Exception as e:
         response_data = {
-            "status": 200,
-            "message": None,
-            "id": pereval.id
+            "status": 500,
+            "message": "Ошибка подключения к базе данных",
+            "id": None
         }
-
-        return JSONResponse(content=jsonable_encoder(response_data))
-
-    finally:
-        db.close()
+        raise HTTPException(status_code=500, detail=response_data)
 
 
 if __name__ == "__main__":
