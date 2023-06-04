@@ -35,3 +35,12 @@ def create_level(db, level_data):
                   autumn=level_data['autumn'], spring=level_data['spring'])
     db.add(level)
     return level
+
+
+def create_perevalImages(db, pereval, images_data):
+    images = []
+    for image_data in images_data:
+        image = PerevalImages(image_name=image_data['data'], title=image_data['title'], pereval=pereval)
+        db.add(image)
+        images.append(image)
+    return images
