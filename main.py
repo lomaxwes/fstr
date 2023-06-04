@@ -1,6 +1,7 @@
 import uvicorn
 
 from fastapi import FastAPI
+
 from models import Base, User, Coords, Level, Pereval, PerevalImages
 
 app = FastAPI()
@@ -20,3 +21,10 @@ def create_user(db, user_data):
                 name=user_data['name'], phone=user_data['phone'])
     db.add(user)
     return user
+
+
+def create_coords(db, coords_data):
+    coords = Coords(latitude=coords_data['latitude'], longitude=coords_data['longitude'],
+                    height=coords_data['height'])
+    db.add(coords)
+    return coords
