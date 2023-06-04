@@ -20,7 +20,7 @@ fstr_db_port = os.getenv('FSTR_DB_PORT')
 fstr_db_login = os.getenv('FSTR_DB_LOGIN')
 fstr_db_pass = os.getenv('FSTR_DB_PASS')
 
-database_url =f'postgresql://{fstr_db_login}:{fstr_db_pass}@{fstr_db_host}:{fstr_db_port}/fstr'
+database_url = f'postgresql://{fstr_db_login}:{fstr_db_pass}@{fstr_db_host}:{fstr_db_port}/fstr'
 
 engine = create_engine(database_url)
 
