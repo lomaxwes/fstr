@@ -28,3 +28,10 @@ def create_coords(db, coords_data):
                     height=coords_data['height'])
     db.add(coords)
     return coords
+
+
+def create_level(db, level_data):
+    level = Level(winter=level_data['winter'], summer=level_data['summer'],
+                  autumn=level_data['autumn'], spring=level_data['spring'])
+    db.add(level)
+    return level
