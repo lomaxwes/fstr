@@ -2,14 +2,13 @@ import os
 import uvicorn
 import datetime
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, HTTPException, Depends
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 from models import Base, User, Coords, Level, Pereval, PerevalImages
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
-
 
 app = FastAPI()
 load_dotenv()
@@ -25,6 +24,14 @@ database_url = f'postgresql://{fstr_db_login}:{fstr_db_pass}@{fstr_db_host}:{fst
 engine = create_engine(database_url)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 @app.get("/")
@@ -115,6 +122,14 @@ def submit_data(data: dict):
             "id": None
         }
         raise HTTPException(status_code=500, detail=response_data)
+
+
+@app.get("/submitData/{id}")
+def get_pereval_by_id(id: int, db: Session = Depends(get_db)):
+    pereval = db.query(Pereval).filter(Pereval.id == id).first()
+    if not pereval:
+        raise HTTPException(status_code=404, detail="Перевал не найден")
+    return pereval
 
 
 if __name__ == "__main__":
