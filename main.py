@@ -2,7 +2,7 @@ import os
 import uvicorn
 import datetime
 
-from fastapi import FastAPI, HTTPException, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, APIRouter
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
@@ -11,8 +11,11 @@ from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from typing import Dict
 from sqlalchemy.orm import joinedload
+from fastapi import Query
 
 app = FastAPI()
+router = APIRouter()
+app.include_router(router)
 load_dotenv()
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
@@ -126,7 +129,7 @@ def submit_data(data: dict):
         raise HTTPException(status_code=500, detail=response_data)
 
 
-@app.get("/submitData/{id}")
+@router.get("/{id}")
 def get_pereval_by_id(id: int, db: Session = Depends(get_db)):
     pereval = db.query(Pereval). \
         options(
@@ -165,6 +168,9 @@ def get_pereval_by_id(id: int, db: Session = Depends(get_db)):
             } for image in pereval.images
         ]
     }
+
+
+app.include_router(router, prefix="/submitData")
 
 
 @app.patch("/submitData/{id}")
@@ -226,6 +232,44 @@ def update_pereval(id: int, data: Dict, db: Session = Depends(get_db)):
     db.commit()
 
     return {"state": 1, "message": "Запись успешно обновлена"}
+
+
+@app.get("/submitData/")
+def get_user_data(email: str = Query(..., alias="user__email"), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == email).first()
+    if user is None:
+        return {"state": 0, "message": "Пользователь не найден"}
+
+    user_data = db.query(Pereval).filter(Pereval.user == user).all()
+    data = []
+    for item in user_data:
+        data.append({
+            "beauty_title": item.beautyTitle,
+            "title": item.title,
+            "other_titles": item.other_titles,
+            "connect": item.connect,
+            "add_time": item.add_time,
+            "status": item.status,
+            "coords": {
+                "latitude": item.coords.latitude,
+                "longitude": item.coords.longitude,
+                "height": item.coords.height
+            },
+            "level": {
+                "winter": item.level.winter,
+                "summer": item.level.summer,
+                "autumn": item.level.autumn,
+                "spring": item.level.spring
+            },
+            "images": [
+                {
+                    "image_name": image.image_name,
+                    "title": image.title
+                } for image in item.images
+            ]
+        })
+
+    return data
 
 
 if __name__ == "__main__":
