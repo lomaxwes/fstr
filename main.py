@@ -9,6 +9,8 @@ from sqlalchemy.orm import sessionmaker, Session
 from models import Base, User, Coords, Level, Pereval, PerevalImages
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
+from typing import Dict
+from sqlalchemy.orm import joinedload
 
 app = FastAPI()
 load_dotenv()
@@ -126,10 +128,104 @@ def submit_data(data: dict):
 
 @app.get("/submitData/{id}")
 def get_pereval_by_id(id: int, db: Session = Depends(get_db)):
-    pereval = db.query(Pereval).filter(Pereval.id == id).first()
+    pereval = db.query(Pereval). \
+        options(
+        joinedload(Pereval.coords),
+        joinedload(Pereval.level),
+        joinedload(Pereval.images)
+    ). \
+        filter(Pereval.id == id). \
+        first()
+
     if not pereval:
         raise HTTPException(status_code=404, detail="Перевал не найден")
-    return pereval
+
+    return {
+        "beauty_title": pereval.beautyTitle,
+        "title": pereval.title,
+        "other_titles": pereval.other_titles,
+        "connect": pereval.connect,
+        "add_time": pereval.add_time,
+        "status": pereval.status,
+        "coords": {
+            "latitude": pereval.coords.latitude,
+            "longitude": pereval.coords.longitude,
+            "height": pereval.coords.height
+        },
+        "level": {
+            "winter": pereval.level.winter,
+            "summer": pereval.level.summer,
+            "autumn": pereval.level.autumn,
+            "spring": pereval.level.spring
+        },
+        "images": [
+            {
+                "image_name": image.image_name,
+                "title": image.title
+            } for image in pereval.images
+        ]
+    }
+
+
+@app.patch("/submitData/{id}")
+def update_pereval(id: int, data: Dict, db: Session = Depends(get_db)):
+    pereval = db.query(Pereval).filter_by(id=id).first()
+
+    if not pereval:
+        return {"state": 0, "message": "Перевал не найден"}
+
+    if pereval.status != "new":
+        return {"state": 0, "message": "Нельзя редактировать запись с текущим статусом"}
+
+    excluded_fields = ["user_email", "user"]
+    for field in excluded_fields:
+        if field in data:
+            return {"state": 0, "message": f"Поле '{field}' не может быть отредактировано"}
+
+    # Обновляем поля перевала
+    if 'beauty_title' in data:
+        pereval.beautyTitle = data['beauty_title']
+    if 'title' in data:
+        pereval.title = data['title']
+    if 'other_titles' in data:
+        pereval.other_titles = data['other_titles']
+    if 'connect' in data:
+        pereval.connect = data['connect']
+    if 'coords' in data:
+        coords = data['coords']
+        if 'latitude' in coords:
+            pereval.coords.latitude = coords['latitude']
+        if 'longitude' in coords:
+            pereval.coords.longitude = coords['longitude']
+        if 'height' in coords:
+            pereval.coords.height = coords['height']
+    if 'level' in data:
+        level = data['level']
+        if 'winter' in level:
+            pereval.level.winter = level['winter']
+        if 'summer' in level:
+            pereval.level.summer = level['summer']
+        if 'autumn' in level:
+            pereval.level.autumn = level['autumn']
+        if 'spring' in level:
+            pereval.level.spring = level['spring']
+
+    if 'images' in data:
+        images_data = data['images']
+
+        db.query(PerevalImages).filter(PerevalImages.pereval_id == id).delete()
+
+        images = []
+        for image_data in images_data:
+            image = PerevalImages(image_name=image_data['data'], title=image_data['title'], pereval=pereval)
+            db.add(image)
+            images.append(image)
+
+        pereval.images = images
+
+    db.commit()
+
+    return {"state": 1, "message": "Запись успешно обновлена"}
 
 
 if __name__ == "__main__":
