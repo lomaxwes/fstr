@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 
 @pytest.fixture
 def db_session():
-    engine = create_engine('sqlite:///test.db')
+    engine = create_engine('sqlite:///fstr.db')
     Session = sessionmaker(bind=engine)
     session = Session()
     yield session
